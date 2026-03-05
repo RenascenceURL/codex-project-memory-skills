@@ -45,6 +45,17 @@ Reload shell after install.
 /mem
 ```
 
+### Windows fallback command (no leading slash)
+```powershell
+mem
+```
+
+### Codex dialog limitation
+- `/init` and similar slash commands are built into Codex itself.
+- `/mem` is a shell function installed into PowerShell/Bash/Zsh, not a Codex built-in slash command.
+- So `/mem` cannot be registered as a native Codex chat slash command from this repo.
+- In Codex chat, use normal text to ask the agent to run memory commands, or run `mem`/`/mem` in your terminal.
+
 ### Direct commands
 ```powershell
 python scripts/memory_manager.py init --project-path .
