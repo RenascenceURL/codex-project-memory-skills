@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Memory Rules"
+  short_description: "Resume work and apply shared personal project rules."
+  default_prompt: "Load project memory and global rules, summarize prior progress, then execute the next concrete task."
