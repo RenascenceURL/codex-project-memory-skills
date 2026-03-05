@@ -33,7 +33,7 @@ mem() {
 
   case "${cmd,,}" in
     1|/load|load)
-      python "$PROJECT_MEMORY_RULES_SCRIPT" context --project-path "$project_path" --print-summary
+      python "$PROJECT_MEMORY_RULES_SCRIPT" context --project-path "$project_path" --skip-init --print-summary
       ;;
     2|4|/save|save|/advanced|advanced)
       python "$PROJECT_MEMORY_RULES_SCRIPT" menu --project-path "$project_path"
@@ -51,9 +51,9 @@ codex() {
   local known_subcommands="exec review login logout mcp mcp-server app-server completion sandbox debug apply resume fork cloud features help"
   local project_path="$PWD"
   local summary prompt merged
-  summary="$(python "$PROJECT_MEMORY_RULES_SCRIPT" context --project-path "$project_path" --print-summary 2>/dev/null || true)"
+  summary="$(python "$PROJECT_MEMORY_RULES_SCRIPT" context --project-path "$project_path" --skip-init --print-summary 2>/dev/null || true)"
   [[ -n "$summary" ]] && printf '%s\n' "$summary"
-  prompt="$(python "$PROJECT_MEMORY_RULES_SCRIPT" context --project-path "$project_path" --print-prompt 2>/dev/null || true)"
+  prompt="$(python "$PROJECT_MEMORY_RULES_SCRIPT" context --project-path "$project_path" --skip-init --print-prompt 2>/dev/null || true)"
 
   if [[ $# -eq 0 && -n "$prompt" ]]; then
     command codex "$prompt"

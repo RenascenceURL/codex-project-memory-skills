@@ -269,7 +269,7 @@ def context_payload(root: Path, rules: Path, ensure: bool) -> dict[str, str]:
     if ensure:
         try: ensure_global(rules)
         except PermissionError: pass
-    ps = ensure_project(root, today())
+    ps = ensure_project(root, today()) if ensure else paths(root)
     rules_txt = rules.read_text(encoding="utf-8") if rules.exists() else "(missing global rules file)"
     mem_txt = ps["memory"].read_text(encoding="utf-8") if ps["memory"].exists() else "(missing docs/memory.md)"
     tasks = parse_index(ps["index"]); lt = latest(tasks)
@@ -342,7 +342,11 @@ def cmd_init(a):
     return 0
 
 def cmd_context(a):
-    out = context_payload(p(a.project_path), p(a.global_rules), not a.skip_init)
+    # context is read-only by default; only create files when explicitly requested
+    ensure = bool(getattr(a, "ensure_init", False))
+    if getattr(a, "skip_init", False):
+        ensure = False
+    out = context_payload(p(a.project_path), p(a.global_rules), ensure)
     if a.json: print(json.dumps(out, ensure_ascii=False)); return 0
     printed = False
     if a.print_summary or (not a.print_summary and not a.print_prompt): print(out["terminal_summary"]); printed = True
@@ -352,9 +356,10 @@ def cmd_context(a):
     return 0
 
 def cmd_summary(a):
-    root = p(a.project_path); ps = ensure_project(root, today())
-    mem = ps["memory"].read_text(encoding="utf-8")
-    entry = latest_session(mem); lt = latest(parse_index(ps["index"]))
+    root = p(a.project_path); ps = paths(root)
+    mem = ps["memory"].read_text(encoding="utf-8") if ps["memory"].exists() else ""
+    entry = latest_session(mem) if mem else []
+    lt = latest(parse_index(ps["index"]))
     print(f"Project memory: {ps['memory']}")
     if entry:
         print("Latest session:")
@@ -377,7 +382,7 @@ def cmd_save(a):
     return 0
 
 def cmd_list(a):
-    root = p(a.project_path); records = sort_tasks(parse_index(ensure_project(root, today())["index"]))
+    root = p(a.project_path); records = sort_tasks(parse_index(paths(root)["index"]))
     data = [{"task_id": r.task_id, "title": r.title, "status": r.status, "updated": r.updated, "task_file": r.task_file} for r in records]
     if a.json: print(json.dumps(data, ensure_ascii=False)); return 0
     if not data: print("No tasks found."); return 0
@@ -412,7 +417,7 @@ def cmd_archive(a):
     return 0
 
 def cmd_stats(a):
-    records = parse_index(ensure_project(p(a.project_path), today())["index"])
+    records = parse_index(paths(p(a.project_path))["index"])
     counts = {s: 0 for s in sorted(VALID_STATUSES)}
     for r in records: counts[r.status] = counts.get(r.status, 0) + 1
     print(f"Project: {p(a.project_path).name}")
@@ -440,12 +445,12 @@ def ask(prompt: str, default: str = "") -> str:
     return input(f"{prompt}: ").strip()
 
 def cmd_menu(a):
-    root, rules = p(a.project_path), p(a.global_rules); ensure_project(root, today())
+    root, rules = p(a.project_path), p(a.global_rules)
     while True:
-        print("\n/mem Menu\n1) Fast Read\n2) Fast Save\n3) Pick Task Manually\n4) Advanced\n0) Exit")
+        print("\n/mem Menu\n1) Fast Read\n2) Fast Save\n3) Pick Task Manually\n4) Init\n5) Advanced\n0) Exit")
         ch = input("Select: ").strip()
         if ch in {"0", "q", "quit", "exit"}: return 0
-        if ch == "1": print(context_payload(root, rules, True)["terminal_summary"]); continue
+        if ch == "1": print(context_payload(root, rules, False)["terminal_summary"]); continue
         if ch == "2":
             print("\nFast Save\n1) Save Local Task Index\n2) Save Task File In docs/tasks")
             sub = input("Select: ").strip()
@@ -467,7 +472,10 @@ def cmd_menu(a):
             pick = input("Pick number: ").strip()
             if not pick.isdigit() or int(pick) < 1 or int(pick) > len(arr): print("Invalid selection."); continue
             cmd_activate(argparse.Namespace(project_path=str(root), task_id=arr[int(pick)-1].task_id)); continue
-        if ch == "4":
+        if ch in {"4", "init", "/init"}:
+            cmd_init(argparse.Namespace(project_path=str(root), global_rules=str(rules)))
+            continue
+        if ch == "5":
             print("\nAdvanced\n1) Archive done tasks\n2) Status stats\n3) Export weekly report")
             adv = input("Select: ").strip()
             if adv == "1": cmd_archive(argparse.Namespace(project_path=str(root)))
@@ -480,7 +488,7 @@ def cmd_menu(a):
 def cmd_slash(a):
     c = a.slash_command.strip().lower()
     if c in {"/init", "init"}: return cmd_init(a)
-    if c in {"/load", "load"}: return cmd_context(argparse.Namespace(project_path=a.project_path, global_rules=a.global_rules, print_summary=True, print_prompt=False, json=False, skip_init=False))
+    if c in {"/load", "load"}: return cmd_context(argparse.Namespace(project_path=a.project_path, global_rules=a.global_rules, print_summary=True, print_prompt=False, json=False, skip_init=True, ensure_init=False))
     if c in {"/summary", "summary"}: return cmd_summary(a)
     if c in {"/save", "save"}: return cmd_save(argparse.Namespace(project_path=a.project_path, global_rules=a.global_rules, mode="task", task_id=a.task_id, title=a.title, status=a.status, owner=a.owner, completed=a.completed, in_progress=a.in_progress, next_steps=a.next_steps, blockers=a.blockers, files=a.files))
     if c in {"/menu", "menu"}: return cmd_menu(argparse.Namespace(project_path=a.project_path, global_rules=a.global_rules))
@@ -508,7 +516,7 @@ def parser() -> argparse.ArgumentParser:
     prs = argparse.ArgumentParser(description="Project memory and global rules manager.")
     sub = prs.add_subparsers(dest="cmd", required=True)
     p1 = sub.add_parser("init", help="Initialize global and project memory files."); add_common(p1); p1.set_defaults(func=cmd_init)
-    p2 = sub.add_parser("context", help="Build context payload for shell/codex startup."); add_common(p2); p2.add_argument("--skip-init", action="store_true"); p2.add_argument("--print-summary", action="store_true"); p2.add_argument("--print-prompt", action="store_true"); p2.add_argument("--json", action="store_true"); p2.set_defaults(func=cmd_context)
+    p2 = sub.add_parser("context", help="Build context payload for shell/codex startup."); add_common(p2); p2.add_argument("--skip-init", action="store_true", help="Compatibility flag. Context is read-only by default."); p2.add_argument("--ensure-init", action="store_true", help="Create missing memory files while building context."); p2.add_argument("--print-summary", action="store_true"); p2.add_argument("--print-prompt", action="store_true"); p2.add_argument("--json", action="store_true"); p2.set_defaults(func=cmd_context)
     p3 = sub.add_parser("summary", help="Print latest memory session and task summary."); add_common(p3); p3.set_defaults(func=cmd_summary)
     p4 = sub.add_parser("save", help="Save index/task updates and sync docs/memory.md."); add_common(p4); add_save(p4); p4.set_defaults(func=cmd_save)
     p5 = sub.add_parser("list-tasks", help="List tasks from docs/tasks/index.md."); add_common(p5); p5.add_argument("--json", action="store_true"); p5.set_defaults(func=cmd_list)

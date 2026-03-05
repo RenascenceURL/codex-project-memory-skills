@@ -85,7 +85,7 @@ function Invoke-ProjectMemoryContext {
         return $null
     }
 
-    $raw = & python $global:ProjectMemoryRulesScript context --project-path $ProjectPath --json
+    $raw = & python $global:ProjectMemoryRulesScript context --project-path $ProjectPath --skip-init --json
     if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($raw)) {
         return $null
     }
@@ -123,7 +123,7 @@ function /mem {
     $normalized = $Cmd.Trim().ToLower()
 
     if ($normalized -in @('1','/load','load')) {
-        & python $global:ProjectMemoryRulesScript context --project-path $ProjectPath --print-summary
+        & python $global:ProjectMemoryRulesScript context --project-path $ProjectPath --skip-init --print-summary
         return
     }
 
@@ -192,6 +192,7 @@ Write-Host "Primary command: /mem"
 Write-Host "Menu: /mem"
 Write-Host "Quick read: /mem 1"
 Write-Host "Manual pick: /mem 3"
+Write-Host "Init: /mem 4"
 if (-not $NoCodexWrap) {
     Write-Host "codex wrapper enabled: startup context is printed and injected into initial prompt."
 }

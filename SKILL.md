@@ -25,6 +25,9 @@ Use this command directly when needed:
 python <skill-dir>/scripts/memory_manager.py context --project-path <project-root> --print-summary
 ```
 
+`context` is read-only by default (no file creation).  
+Use `init` (preferred) or `context --ensure-init` when you explicitly want to create missing files.
+
 ## `/mem` Menu Workflow
 
 Primary command is `/mem`.
@@ -33,7 +36,8 @@ Top-level menu:
 - `1` Fast Read
 - `2` Fast Save
 - `3` Pick Task Manually
-- `4` Advanced
+- `4` Init
+- `5` Advanced
 
 Rules:
 - Pick Task manually must set selected task status to `in_progress`, including reopening `done`.
@@ -46,6 +50,8 @@ Rules:
   - `python <skill-dir>/scripts/memory_manager.py init --project-path <project-root>`
 - Build startup payload:
   - `python <skill-dir>/scripts/memory_manager.py context --project-path <project-root> --json`
+- Build startup payload and force initialization:
+  - `python <skill-dir>/scripts/memory_manager.py context --project-path <project-root> --ensure-init --json`
 - Save updates:
   - `python <skill-dir>/scripts/memory_manager.py save --project-path <project-root> --mode task --title "task-name"`
 - List tasks:

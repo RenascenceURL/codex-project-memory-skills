@@ -10,7 +10,8 @@
 - `1` Fast Read
 - `2` Fast Save
 - `3` Pick Task Manually
-- `4` Advanced
+- `4` Init
+- `5` Advanced
 - Manual pick always sets selected task to `in_progress` (including reopening `done`)
 - Codex startup context:
 - print summary in terminal
@@ -48,10 +49,15 @@ Reload shell after install.
 ```powershell
 python scripts/memory_manager.py init --project-path .
 python scripts/memory_manager.py context --project-path . --print-summary
+python scripts/memory_manager.py context --project-path . --ensure-init --print-summary
 python scripts/memory_manager.py save --project-path . --mode task --title "combat-parry"
 python scripts/memory_manager.py list-tasks --project-path .
 python scripts/memory_manager.py activate-task --project-path . --task-id combat-parry
 ```
+
+Notes:
+- `context` is read-only by default and does not create files.
+- To create missing memory files, run `init` (recommended) or pass `--ensure-init`.
 
 ### Compatibility slash mode
 ```powershell
